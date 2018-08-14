@@ -27,11 +27,12 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
     private int[] mPositions;//数据源字符串数组
 
     private int anInt;//每个字母所占的大小；
-    private TextPaint textPaint;
+
     private boolean firstVisible = true;
     private int width;//控件宽度
     private int height;//控件高度
     private int mTextPadding;
+    private TextPaint textPaint;
     private Paint selectedPaint;//被选中文字的画笔
     private float downX;
     private float anOffset;
@@ -52,8 +53,6 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
     private OnItemSelectedListener mOnItemSelectedListener;
     private GestureDetectorCompat mGestureDetectorCompat;
     private boolean mFling = false;
-    private int mMaxLeftScrollDistance;
-    private int mMaxRightScrollDistance;
     private int startPos;
     private int centerPos;
 
@@ -179,14 +178,6 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
      * @param attrs
      */
     private void initAttrs(AttributeSet attrs) {
-     /*   TintTypedArray tta = TintTypedArray.obtainStyledAttributes(getContext(), attrs,
-                R.styleable.HorizontalselectedView);
-        //两种字体颜色和字体大小
-        seeSize = tta.getInteger(R.styleable.HorizontalselectedView_HorizontalselectedViewSeesize, 5);
-        selectedTextSize = tta.getFloat(R.styleable.HorizontalselectedView_HorizontalselectedViewSelectedTextSize, 50);
-        selectedColor = tta.getColor(R.styleable.HorizontalselectedView_HorizontalselectedViewSelectedTextColor, context.getResources().getColor(android.R.color.black));
-        textSize = tta.getFloat(R.styleable.HorizontalselectedView_HorizontalselectedViewTextSize, 40);
-        textColor = tta.getColor(R.styleable.HorizontalselectedView_HorizontalselectedViewTextColor, context.getResources().getColor(android.R.color.darker_gray));*/
         selectedTextSize = 50;
         selectedColor = context.getResources().getColor(R.color.switcher_mode_text_selected);
         textSize = 50;
@@ -203,7 +194,9 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
         //3从矩形区域中读出文本内容的宽高
         centerTextWidth = rect.width();
         centerTextHeight = rect.height();
-        Log.i(TAG, "onDraw getScaleX: " + getScaleX());
+        Log.i(TAG, "onDraw getScrollX: " + getScrollX());
+        Log.i(TAG, "onDraw width: "+getWidth()+" ,height: "+getHeight());
+        canvas.drawCircle(540, getHeight() / 2, 20, selectedPaint);
         canvas.drawText(selectedStr, getWidth() / 2 - centerTextWidth / 2  + anOffset, getHeight() / 2 + centerTextHeight / 2, selectedPaint);//绘制被选中文字，注意点是y坐标
         if (mCenterIndex >= 0 && mCenterIndex <= mItems.size() - 1) {
             for (int i = 0; i < mItems.size(); i++) {
@@ -264,7 +257,7 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
     public void computeScroll() {
         super.computeScroll();
         if (mScroller.computeScrollOffset()) {
-            Log.i(TAG, "sain computeScroll: " + mScroller.getCurrX());
+          //  Log.i(TAG, "sain computeScroll: " + mScroller.getCurrX());
             scrollTo(mScroller.getCurrX(), mScroller.getCurrY());
             if (mScroller.getCurrX() == getScrollX()
                     && mScroller.getCurrY() == getScrollY() ) {
