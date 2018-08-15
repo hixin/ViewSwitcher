@@ -9,7 +9,7 @@ import android.widget.LinearLayout;
 
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements Switcher.OnItemSelectedListener {
     private static final String TAG = "MainActivity";
     private LinearLayout layout;
     private Button scrollToBtn;
@@ -31,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
         init();
         switcher = findViewById(R.id.wheelview);
         switcher.setData(names);
+        switcher.setOnItemSelectedListener(this);
     }
 
     private void init() {
@@ -41,6 +42,15 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    public void onItemChanged(int lastPos, int currentPos) {
+
+    }
+
+    @Override
+    public void onItemSelected(Switcher view, int position) {
+        Log.i(TAG, "onItemSelected: " + position);
+    }
 }
 
 

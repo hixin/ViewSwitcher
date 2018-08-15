@@ -15,10 +15,11 @@ import android.view.MotionEvent;
 import android.view.SoundEffectConstants;
 import android.view.View;
 import android.widget.OverScroller;
+
 import java.util.ArrayList;
 import java.util.List;
 
-public class Switcher extends View implements GestureDetector.OnGestureListener{
+public class Switcher extends View implements GestureDetector.OnGestureListener {
     private static final String TAG = "Switcher";
     private List<String> mItems = new ArrayList<>();
     private List<Integer> mItemWidths = new ArrayList<>();
@@ -46,6 +47,7 @@ public class Switcher extends View implements GestureDetector.OnGestureListener{
     private OnItemSelectedListener mOnItemSelectedListener;
     private OverScroller mScroller;
     private GestureDetectorCompat mGestureDetectorCompat;
+    private int mLastSelectedIndex;
 
     @Override
     public boolean onDown(MotionEvent e) {
@@ -68,7 +70,7 @@ public class Switcher extends View implements GestureDetector.OnGestureListener{
     public boolean onSingleTapUp(MotionEvent e) {
         playSoundEffect(SoundEffectConstants.CLICK);
         float mXMove = e.getRawX();
-        int scrolledX = (int) (mXMove - getWidth()/2);
+        int scrolledX = (int) (mXMove - getWidth() / 2);
         Log.i(TAG, "onSingleTapUp: ");
         mScrollDistance = reviseGap(scrolledX);
         autoSettle(mScrollDistance);
@@ -90,8 +92,15 @@ public class Switcher extends View implements GestureDetector.OnGestureListener{
         return false;
     }
 
+
     public interface OnItemSelectedListener {
+        void onItemChanged(int lastPos, int currentPos);
+
         void onItemSelected(Switcher view, int position);
+    }
+
+    public void setOnItemSelectedListener(OnItemSelectedListener listener) {
+        mOnItemSelectedListener = listener;
     }
 
     public Switcher(Context context, @Nullable AttributeSet attrs) {
@@ -104,7 +113,8 @@ public class Switcher extends View implements GestureDetector.OnGestureListener{
         mScroller = new OverScroller(getContext());
         mGestureDetectorCompat = new GestureDetectorCompat(getContext(), this);
         setFocusable(true);
-        mSelectedIndex = 3;
+        mSelectedIndex = 1;
+        mLastSelectedIndex = mSelectedIndex;
     }
 
     private void initAttrs(AttributeSet attrs) {
@@ -129,7 +139,7 @@ public class Switcher extends View implements GestureDetector.OnGestureListener{
     }
 
     public void calcItemsWidth(List<String> items) {
-        for(String item : items) {
+        for (String item : items) {
             textPaint.getTextBounds(item, 0, item.length(), rect);
             mItemWidths.add(rect.width());
         }
@@ -147,7 +157,7 @@ public class Switcher extends View implements GestureDetector.OnGestureListener{
         selectedPaint.getTextBounds(selectedStr, 0, selectedStr.length(), rect);
         mSelectedTextWidth = rect.width();
         mSelectedTextHeight = rect.height();
-        canvas.drawCircle(getWidth() / 2  + getScrollX(), getHeight() / 2 - mSelectedTextHeight, 12, selectedPaint);
+        canvas.drawCircle(getWidth() / 2 + getScrollX(), getHeight() / 2 - mSelectedTextHeight, 12, selectedPaint);
         mSelectedX = getWidth() / 2 - mSelectedTextWidth / 2 + getScrollX();
         mSelectedY = getHeight() / 2 + mSelectedTextHeight / 2;
         canvas.drawText(selectedStr, mSelectedX, mSelectedY, selectedPaint);
@@ -155,7 +165,7 @@ public class Switcher extends View implements GestureDetector.OnGestureListener{
         float otherX, otherY;
         otherX = mSelectedX;
         otherY = getHeight() / 2 + mTextHeight / 2;
-        for (int i = mSelectedIndex - 1; i >= 0; i --) {
+        for (int i = mSelectedIndex - 1; i >= 0; i--) {
             otherX = otherX - mItemMargin - mItemWidths.get(i);
             canvas.drawText(mItems.get(i), otherX, otherY, textPaint);
             mItemCenterPositions.put(i, (int) (otherX + mItemWidths.get(i) / 2));
@@ -190,9 +200,12 @@ public class Switcher extends View implements GestureDetector.OnGestureListener{
                 postInvalidate();
             }
         }
-        
-        if(mScroller.isFinished()) {
-            Log.i(TAG, "computeScroll: ");
+
+        if (mScroller.isFinished()) {
+            if (mOnItemSelectedListener != null) {
+                mOnItemSelectedListener.onItemSelected(this, mSelectedIndex);
+                mOnItemSelectedListener.onItemChanged(mLastSelectedIndex, mSelectedIndex);
+            }
         }
     }
 
@@ -200,7 +213,7 @@ public class Switcher extends View implements GestureDetector.OnGestureListener{
         mScroller.forceFinished(true);
         int sx = getScrollX();
         Log.i(TAG, "autoSettle sx: " + sx + " ,dx:" + dx);
-        mScroller.startScroll(sx, 0, dx , 0, 1200);
+        mScroller.startScroll(sx, 0, dx, 0);
         postInvalidate();
     }
 
@@ -209,9 +222,9 @@ public class Switcher extends View implements GestureDetector.OnGestureListener{
         if (Math.abs(gap) < (mItemWidths.get(mSelectedIndex) + mItemMargin) / 2) {
             return 0;
         }
-        int centerX = getWidth()/2;
+        int centerX = getWidth() / 2;
         for (int i = 0; i < mItemsCount; i++) {
-            if (Math.abs(centerX + gap - (mItemCenterPositions.get(i) - getScrollX())) <= (mItemWidths.get(i) + mItemMargin) /2) {
+            if (Math.abs(centerX + gap - (mItemCenterPositions.get(i) - getScrollX())) <= (mItemWidths.get(i) + mItemMargin) / 2) {
                 mSelectedIndex = i;
                 return gap > 0 ? Math.abs(mItemCenterPositions.get(i) - centerX - getScrollX()) : -Math.abs(mItemCenterPositions.get(i) - centerX - getScrollX());
             }
