@@ -12,49 +12,43 @@ import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.SoundEffectConstants;
+import android.view.VelocityTracker;
 import android.view.View;
+import android.view.ViewConfiguration;
+import android.view.ViewParent;
+import android.widget.OverScroller;
 import android.widget.Scroller;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class Switcher extends View implements GestureDetector.OnGestureListener {
+public class Switcher extends View implements GestureDetector.OnGestureListener{
     private static final String TAG = "Switcher";
-
-    private Context context;
-    private List<String> mItems = new ArrayList<String>();//数据源字符串数组
-    private int[] mPositions;//数据源字符串数组
-
-    private int anInt;//每个字母所占的大小；
-
-    private boolean firstVisible = true;
-    private int width;//控件宽度
-    private int height;//控件高度
-    private int mTextPadding;
+    private List<String> mItems = new ArrayList<>();
+    private List<Integer> mItemsWidth = new ArrayList<>();
     private TextPaint textPaint;
-    private Paint selectedPaint;//被选中文字的画笔
-    private float downX;
-    private float anOffset;
+    private TextPaint selectedPaint;
     private float selectedTextSize;
     private int selectedColor;
     private float textSize;
     private int textColor;
+    private int mSelectedTextWidth;
+    private int mSelectedTextHeight;
+    private int mTextHeight;
+    private int mSelectedIndex;
+    private int mItemsCount;
+    private int mItemMargin;
+    private float mSelectedX;
+    private float mSelectedY;
+
     private Rect rect = new Rect();
 
-    private int textWidth = 0;
-    private int textHeight = 0;
-    private int centerTextHeight = 0;
-    private int centerTextWidth = 0;
-    private int mCenterIndex = -1;
-    private int mLastSelectedIndex;
-    private List<ModeView> modeViews = new ArrayList<ModeView>();
-    private Scroller mScroller;
-    private OnItemSelectedListener mOnItemSelectedListener;
-    private GestureDetectorCompat mGestureDetectorCompat;
     private boolean mFling = false;
-    private int startPos;
-    private int centerPos;
+
+    private OnItemSelectedListener mOnItemSelectedListener;
+    private OverScroller mScroller;
+    private GestureDetectorCompat mGestureDetectorCompat;
 
     @Override
     public boolean onDown(MotionEvent e) {
@@ -75,7 +69,161 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
 
     @Override
     public boolean onSingleTapUp(MotionEvent e) {
-        playSoundEffect(SoundEffectConstants.CLICK);
+        //playSoundEffect(SoundEffectConstants.CLICK);
+        Log.i(TAG, "onSingleTapUp2: " + e.getX());
+        Log.i(TAG, "onSingleTapUp3: " + e.getRawX());
+        float mXMove = e.getRawX();
+        int scrolledX = (int) (mXMove - getWidth()/2);
+        refreshCenter(getScrollX() + scrolledX);
+        //autoSettle();
+        //scrollBy(scrolledX, 0);
+        return true;
+    }
+
+    @Override
+    public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+        return false;
+    }
+
+    @Override
+    public void onLongPress(MotionEvent e) {
+
+    }
+
+    @Override
+    public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+        return false;
+    }
+
+    public interface OnItemSelectedListener {
+        void onItemSelected(Switcher view, int position);
+    }
+
+    public Switcher(Context context, @Nullable AttributeSet attrs) {
+        super(context, attrs);
+        initSwitcher();
+        initAttrs(attrs);
+    }
+
+
+    private void initSwitcher() {
+        mScroller = new OverScroller(getContext());
+        mGestureDetectorCompat = new GestureDetectorCompat(getContext(), this);
+        setFocusable(true);
+        mSelectedIndex = 3;
+    }
+
+    private void initAttrs(AttributeSet attrs) {
+        selectedTextSize = 60;
+        textSize = 50;
+        selectedColor = getResources().getColor(R.color.switcher_mode_text_selected);
+        textColor = getResources().getColor(R.color.switcher_mode_text);
+        mItemMargin = 84;
+        textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        textPaint.setTextSize(textSize);
+        textPaint.setColor(textColor);
+        selectedPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        selectedPaint.setColor(selectedColor);
+        selectedPaint.setTextSize(selectedTextSize);
+    }
+
+
+    public void setData(List<String> items) {
+        mItems = items;
+        mItemsCount = items.size();
+        invalidate();
+    }
+
+    public void calcItemsWidth(List<String> items) {
+        for(String item : items) {
+            textPaint.getTextBounds(item, 0, item.length(), rect);
+           // Log.i(TAG, "calcItemsWidth " + "item: " + item + " width: " + rect.width());
+            mItemsWidth.add(rect.width());
+        }
+        mTextHeight = rect.height();
+    }
+
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        if (mItemsCount == 0) {
+            return;
+        }
+        calcItemsWidth(mItems);
+        String selectedStr = mItems.get(mSelectedIndex);
+        selectedPaint.getTextBounds(selectedStr, 0, selectedStr.length(), rect);
+        mSelectedTextWidth = rect.width();
+        mSelectedTextHeight = rect.height();
+        mSelectedX = getWidth() / 2 - mSelectedTextWidth / 2;
+        mSelectedY = getHeight() / 2 + mSelectedTextHeight / 2;
+        canvas.drawText(selectedStr, mSelectedX, mSelectedY, selectedPaint);
+        float otherX, otherY;
+        otherX = mSelectedX;
+        otherY = getHeight() / 2 + mTextHeight / 2;
+        for (int i = mSelectedIndex - 1; i >= 0; i --) {
+            otherX = otherX - mItemMargin - mItemsWidth.get(i);
+            canvas.drawText(mItems.get(i), otherX, otherY, textPaint);
+        }
+        otherX = mSelectedX + mSelectedTextWidth;
+        for (int i = mSelectedIndex + 1; i < mItemsCount; i++) {
+            otherX = otherX + mItemMargin + mItemsWidth.get(i);
+            canvas.drawText(mItems.get(i), otherX - mItemsWidth.get(i), otherY, textPaint);
+        }
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        if (mItems == null || mItems.size() == 0 || !isEnabled()) {
+            return false;
+        }
+        boolean ret = mGestureDetectorCompat.onTouchEvent(event);
+        if (!mFling && MotionEvent.ACTION_UP == event.getAction()) {
+            autoSettle();
+            ret = true;
+        }
+        return ret || super.onTouchEvent(event);
+    }
+
+    @Override
+    public void computeScroll() {
+       /* if (mScroller.computeScrollOffset()) {
+            scrollTo(mScroller.getCurrX(), mScroller.getCurrY());
+            refreshCenter();
+            invalidate();
+        } else {
+            if (mFling) {
+                mFling = false;
+                autoSettle();
+            }
+        }*/
+    }
+
+    private void autoSettle() {
+        int sx = getScrollX();
+        float dx = 5;
+        mScroller.startScroll(sx, 0, (int) dx, 0);
+        postInvalidate();
+    }
+
+    private void refreshCenter(int offsetX) {
+        Log.i(TAG, "refreshCenter: " + getScrollX());
+    }
+
+    private void refreshCenter() {
+        refreshCenter(getScrollX());
+    }
+
+    /*
+
+    @Override
+    public void onShowPress(MotionEvent e) {
+
+    }
+
+    @Override
+    public boolean onSingleTapUp(MotionEvent e) {
+        //playSoundEffect(SoundEffectConstants.CLICK);
         mLastSelectedIndex = mCenterIndex;
         refreshCenter((int) e.getRawX());
         autoSettle();
@@ -141,14 +289,7 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
         void onItemSelected(Switcher view, int position);
     }
 
-    public Switcher(Context context, @Nullable AttributeSet attrs) {
-        super(context, attrs);
-        this.context = context;
-        mScroller = new Scroller(context);
-        mGestureDetectorCompat = new GestureDetectorCompat(getContext(), this);
-        initAttrs(attrs);
-        initPaint();
-    }
+
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
@@ -159,30 +300,12 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
         return ret;
     }
 
-    /**
-     * 初始化画笔
-     */
-    private void initPaint() {
-        textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-        textPaint.setTextSize(textSize);
-        textPaint.setColor(textColor);
-        selectedPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-        selectedPaint.setColor(selectedColor);
-        selectedPaint.setTextSize(selectedTextSize);
-
-    }
 
 
-    /**
-     * 初始化属性
-     * @param attrs
-     */
-    private void initAttrs(AttributeSet attrs) {
-        selectedTextSize = 50;
-        selectedColor = context.getResources().getColor(R.color.switcher_mode_text_selected);
-        textSize = 50;
-        textColor = context.getResources().getColor(R.color.switcher_mode_text);
-        mTextPadding = 84;
+    @Override
+    public void draw(Canvas canvas) {
+        super.draw(canvas);
+        canvas.drawCircle(540, getHeight() / 2, 20, selectedPaint);
     }
 
     @Override
@@ -196,7 +319,6 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
         centerTextHeight = rect.height();
         Log.i(TAG, "onDraw getScrollX: " + getScrollX());
         Log.i(TAG, "onDraw width: "+getWidth()+" ,height: "+getHeight());
-        canvas.drawCircle(540, getHeight() / 2, 20, selectedPaint);
         canvas.drawText(selectedStr, getWidth() / 2 - centerTextWidth / 2  + anOffset, getHeight() / 2 + centerTextHeight / 2, selectedPaint);//绘制被选中文字，注意点是y坐标
         if (mCenterIndex >= 0 && mCenterIndex <= mItems.size() - 1) {
             for (int i = 0; i < mItems.size(); i++) {
@@ -268,10 +390,10 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
 
 
 
-    /**
+    *//**
      * 设置个数据源
      *
-     */
+     *//*
     public void setData(List<String> strs) {
         this.mItems = strs;
         mCenterIndex = 0;
@@ -314,6 +436,6 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
         public String getmTitle() {
             return mTitle;
         }
-    }
+    }*/
 }
 

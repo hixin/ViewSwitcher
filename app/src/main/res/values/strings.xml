@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">SwitcherDemo</string>
+    <string name="hello">Scroll</string>
+
 </resources>
