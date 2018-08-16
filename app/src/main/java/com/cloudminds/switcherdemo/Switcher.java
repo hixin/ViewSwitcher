@@ -218,7 +218,10 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
     }
 
     private int reviseGap(int gap) {
-        Log.i(TAG, "refreshCenter: " + gap);
+        Log.i(TAG, "reviseGap0: " + getScrollX());
+        Log.i(TAG, "reviseGap1: " + gap);
+        Log.i(TAG, "reviseGap2: " + mItemCenterPositions.toString());
+        Log.i(TAG, " ");
         if (Math.abs(gap) < (mItemWidths.get(mSelectedIndex) + mItemMargin) / 2) {
             return 0;
         }

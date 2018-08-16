@@ -14,6 +14,7 @@ public class MainActivity extends AppCompatActivity implements Switcher.OnItemSe
     private LinearLayout layout;
     private Button scrollToBtn;
     private Button scrollByBtn;
+    private ScrollerButton smoothScrollToBtn;
     private Switcher switcher;
     private ArrayList<String> names;
 
@@ -23,8 +24,39 @@ public class MainActivity extends AppCompatActivity implements Switcher.OnItemSe
         setContentView(R.layout.activity_main1);
     }*/
 
-
     @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main0);
+        layout = findViewById(R.id.layout);
+        scrollToBtn = findViewById(R.id.scroll_to_btn);
+        scrollByBtn = findViewById(R.id.scroll_by_btn);
+        smoothScrollToBtn = findViewById(R.id.smooth_scroll_to_btn);
+        scrollToBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                layout.scrollTo(-60, 0);
+            }
+        });
+
+        smoothScrollToBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                smoothScrollToBtn.smoothScrollTo(-60, 0);
+            }
+        });
+
+        scrollByBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.i(TAG, "onClick: " + layout.getScrollX());
+                //layout.scrollBy(-60, 0);
+            }
+        });
+    }
+
+
+   /* @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -41,7 +73,7 @@ public class MainActivity extends AppCompatActivity implements Switcher.OnItemSe
             names.add(String.valueOf(temp));
         }
     }
-
+*/
     @Override
     public void onItemChanged(int lastPos, int currentPos) {
 
