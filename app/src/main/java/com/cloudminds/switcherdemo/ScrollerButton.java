@@ -26,10 +26,9 @@ public class ScrollerButton extends Button {
     }
 
     public void smoothScrollTo(int destX, int destY) {
-        int scrollX = getScrollX();
+        int scrollX = ((View) getParent()).getScrollX();
         Log.i(TAG, "smoothScrollTo: " + scrollX);
-        int delta = destX - scrollX;
-        mScroller.startScroll(scrollX, 0, delta, 0, 2000);
+        mScroller.startScroll(scrollX, 0, destX - scrollX, 0, 2000);
         invalidate();
     }
 }

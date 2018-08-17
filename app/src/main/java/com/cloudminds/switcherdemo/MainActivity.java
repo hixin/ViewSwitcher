@@ -24,7 +24,7 @@ public class MainActivity extends AppCompatActivity implements Switcher.OnItemSe
         setContentView(R.layout.activity_main1);
     }*/
 
-    @Override
+    /*@Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main0);
@@ -53,10 +53,10 @@ public class MainActivity extends AppCompatActivity implements Switcher.OnItemSe
                 //layout.scrollBy(-60, 0);
             }
         });
-    }
+    }*/
 
 
-   /* @Override
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -73,7 +73,6 @@ public class MainActivity extends AppCompatActivity implements Switcher.OnItemSe
             names.add(String.valueOf(temp));
         }
     }
-*/
     @Override
     public void onItemChanged(int lastPos, int currentPos) {
 

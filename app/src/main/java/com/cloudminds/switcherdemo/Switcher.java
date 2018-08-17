@@ -23,22 +23,22 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
     private static final String TAG = "Switcher";
     private List<String> mItems = new ArrayList<>();
     private List<Integer> mItemWidths = new ArrayList<>();
+    private List<Integer> mIntegralDistance = new ArrayList<>(); //before certain index , the sum distance include margin and item width
     private SparseArray<Integer> mItemCenterPositions = new SparseArray<>();
     private TextPaint textPaint;
     private TextPaint selectedPaint;
-    private float selectedTextSize;
     private int selectedColor;
     private float textSize;
     private int textColor;
-    private int mSelectedTextWidth;
-    private int mSelectedTextHeight;
     private int mTextHeight;
-    private int mSelectedIndex;
+    //private int mSelectedIndex;
+    private int mCenterIndex;
     private int mItemsCount;
     private int mItemMargin;
     private int mScrollDistance;
-    private float mSelectedX;
-    private float mSelectedY;
+    private float mStartX;
+    private boolean hasInit;
+    private boolean updatePosition;
 
     private Rect rect = new Rect();
 
@@ -68,11 +68,11 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
 
     @Override
     public boolean onSingleTapUp(MotionEvent e) {
+        mScroller.forceFinished(true);
         playSoundEffect(SoundEffectConstants.CLICK);
-        float mXMove = e.getRawX();
-        int scrolledX = (int) (mXMove - getWidth() / 2);
-        Log.i(TAG, "onSingleTapUp: ");
-        mScrollDistance = reviseGap(scrolledX);
+        int mXMove = (int) e.getRawX();
+        updatePosition = false;
+        mScrollDistance = reviseGap(mXMove);
         autoSettle(mScrollDistance);
         return true;
     }
@@ -113,12 +113,11 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
         mScroller = new OverScroller(getContext());
         mGestureDetectorCompat = new GestureDetectorCompat(getContext(), this);
         setFocusable(true);
-        mSelectedIndex = 1;
-        mLastSelectedIndex = mSelectedIndex;
+        mCenterIndex = 2;
+        mLastSelectedIndex = mCenterIndex;
     }
 
     private void initAttrs(AttributeSet attrs) {
-        selectedTextSize = 60;
         textSize = 50;
         selectedColor = getResources().getColor(R.color.switcher_mode_text_selected);
         textColor = getResources().getColor(R.color.switcher_mode_text);
@@ -128,9 +127,8 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
         textPaint.setColor(textColor);
         selectedPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         selectedPaint.setColor(selectedColor);
-        selectedPaint.setTextSize(selectedTextSize);
+        selectedPaint.setTextSize(textSize);
     }
-
 
     public void setData(List<String> items) {
         mItems = items;
@@ -138,13 +136,45 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
         invalidate();
     }
 
+    private void calcFirstItemPos(int centerIndex) {
+        mStartX = getWidth() / 2 - mItemWidths.get(centerIndex) / 2 - mIntegralDistance.get(centerIndex);
+    }
+
     public void calcItemsWidth(List<String> items) {
+        int temp = 0;
         for (String item : items) {
             textPaint.getTextBounds(item, 0, item.length(), rect);
             mItemWidths.add(rect.width());
+            mIntegralDistance.add(temp);
+            temp = temp + rect.width() + mItemMargin;
         }
         mTextHeight = rect.height();
     }
+
+    public void calcItemCenterPositions() {
+        for (int i = 0; i < mItemsCount; i++) {
+            int centerPos = (int) (mStartX + mIntegralDistance.get(i) + mItemWidths.get(i) / 2);
+            mItemCenterPositions.put(i, centerPos);
+        }
+    }
+
+    public void updateItemCenterPositions(int offset) {
+        for (int i = 0; i < mItemsCount; i++) {
+            int centerPos = mItemCenterPositions.get(i) - offset;
+            mItemCenterPositions.put(i, centerPos);
+        }
+    }
+
+    private void initPosition ( ) {
+        if (hasInit) {
+            return;
+        }
+        calcItemsWidth(mItems);
+        calcFirstItemPos(mCenterIndex);
+        calcItemCenterPositions();
+        hasInit = true;
+    }
+
 
     @Override
     protected void onDraw(Canvas canvas) {
@@ -152,29 +182,12 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
         if (mItemsCount == 0) {
             return;
         }
-        calcItemsWidth(mItems);
-        String selectedStr = mItems.get(mSelectedIndex);
-        selectedPaint.getTextBounds(selectedStr, 0, selectedStr.length(), rect);
-        mSelectedTextWidth = rect.width();
-        mSelectedTextHeight = rect.height();
-        canvas.drawCircle(getWidth() / 2 + getScrollX(), getHeight() / 2 - mSelectedTextHeight, 12, selectedPaint);
-        mSelectedX = getWidth() / 2 - mSelectedTextWidth / 2 + getScrollX();
-        mSelectedY = getHeight() / 2 + mSelectedTextHeight / 2;
-        canvas.drawText(selectedStr, mSelectedX, mSelectedY, selectedPaint);
-        mItemCenterPositions.put(mSelectedIndex, getWidth() / 2);
-        float otherX, otherY;
-        otherX = mSelectedX;
-        otherY = getHeight() / 2 + mTextHeight / 2;
-        for (int i = mSelectedIndex - 1; i >= 0; i--) {
-            otherX = otherX - mItemMargin - mItemWidths.get(i);
-            canvas.drawText(mItems.get(i), otherX, otherY, textPaint);
-            mItemCenterPositions.put(i, (int) (otherX + mItemWidths.get(i) / 2));
-        }
-        otherX = mSelectedX + mSelectedTextWidth;
-        for (int i = mSelectedIndex + 1; i < mItemsCount; i++) {
-            otherX = otherX + mItemMargin + mItemWidths.get(i);
-            canvas.drawText(mItems.get(i), otherX - mItemWidths.get(i), otherY, textPaint);
-            mItemCenterPositions.put(i, (int) (otherX - mItemWidths.get(i) / 2));
+        initPosition();
+        canvas.drawCircle(getWidth() / 2 + getScrollX(), getHeight() / 2 - 1.5f * mTextHeight, 12, selectedPaint);
+        float mItemY =  getHeight() / 2;
+        for (int i = 0; i < mItemsCount; i++) {
+            float mItemX = mStartX + mIntegralDistance.get(i);
+            canvas.drawText(mItems.get(i), mItemX, mItemY, i != mCenterIndex ? textPaint : selectedPaint);
         }
     }
 
@@ -195,44 +208,47 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
     public void computeScroll() {
         if (mScroller.computeScrollOffset()) {
             scrollTo(mScroller.getCurrX(), mScroller.getCurrY());
+            postInvalidate();
             if (mScroller.getCurrX() == getScrollX()
                     && mScroller.getCurrY() == getScrollY()) {
-                postInvalidate();
+
             }
         }
 
         if (mScroller.isFinished()) {
+            if (updatePosition) {
+                updateItemCenterPositions(mScrollDistance);
+                Log.i(TAG, "reviseGap getScrollX: " + getScrollX());
+                Log.i(TAG, "reviseGap after: " + mItemCenterPositions.toString());
+                Log.i(TAG, " ");
+            }
             if (mOnItemSelectedListener != null) {
-                mOnItemSelectedListener.onItemSelected(this, mSelectedIndex);
-                mOnItemSelectedListener.onItemChanged(mLastSelectedIndex, mSelectedIndex);
+                mOnItemSelectedListener.onItemSelected(this, mCenterIndex);
+                mOnItemSelectedListener.onItemChanged(mLastSelectedIndex, mCenterIndex);
             }
         }
     }
 
     private void autoSettle(int dx) {
-        mScroller.forceFinished(true);
         int sx = getScrollX();
         Log.i(TAG, "autoSettle sx: " + sx + " ,dx:" + dx);
-        mScroller.startScroll(sx, 0, dx, 0);
+        mScroller.startScroll(sx, 0, dx, 0, 2000);
         postInvalidate();
     }
 
     private int reviseGap(int gap) {
-        Log.i(TAG, "reviseGap0: " + getScrollX());
-        Log.i(TAG, "reviseGap1: " + gap);
-        Log.i(TAG, "reviseGap2: " + mItemCenterPositions.toString());
-        Log.i(TAG, " ");
-        if (Math.abs(gap) < (mItemWidths.get(mSelectedIndex) + mItemMargin) / 2) {
-            return 0;
-        }
-        int centerX = getWidth() / 2;
+        int distance = 0;
+        Log.i(TAG, "reviseGap before: " + mItemCenterPositions.toString());
         for (int i = 0; i < mItemsCount; i++) {
-            if (Math.abs(centerX + gap - (mItemCenterPositions.get(i) - getScrollX())) <= (mItemWidths.get(i) + mItemMargin) / 2) {
-                mSelectedIndex = i;
-                return gap > 0 ? Math.abs(mItemCenterPositions.get(i) - centerX - getScrollX()) : -Math.abs(mItemCenterPositions.get(i) - centerX - getScrollX());
+            if (Math.abs(gap - (mItemCenterPositions.get(i))) <= (mItemWidths.get(i) + mItemMargin) / 2) {
+                distance = mItemCenterPositions.get(i) - mItemCenterPositions.get(mCenterIndex);
+                mCenterIndex = i;
+                updatePosition = true;
+                break;
             }
         }
-        return 0;
+        Log.i(TAG, "reviseGap2: " + distance);
+        return distance;
     }
 
 }
