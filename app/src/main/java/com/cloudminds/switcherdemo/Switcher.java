@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.os.Parcelable;
 import android.support.annotation.Nullable;
 import android.support.v4.view.GestureDetectorCompat;
 import android.text.TextPaint;
@@ -38,7 +39,6 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
     private int mScrollDistance;
     private float mStartX;
     private boolean hasInit;
-    private boolean updatePosition;
 
     private Rect rect = new Rect();
 
@@ -52,7 +52,7 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
     @Override
     public boolean onDown(MotionEvent e) {
         if (!mScroller.isFinished()) {
-            mScroller.forceFinished(false);
+            return false;
         }
         mFling = false;
         if (null != getParent()) {
@@ -68,10 +68,8 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
 
     @Override
     public boolean onSingleTapUp(MotionEvent e) {
-        mScroller.forceFinished(true);
         playSoundEffect(SoundEffectConstants.CLICK);
         int mXMove = (int) e.getRawX();
-        updatePosition = false;
         mScrollDistance = reviseGap(mXMove);
         autoSettle(mScrollDistance);
         return true;
@@ -208,23 +206,18 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
     public void computeScroll() {
         if (mScroller.computeScrollOffset()) {
             scrollTo(mScroller.getCurrX(), mScroller.getCurrY());
-            postInvalidate();
-            if (mScroller.getCurrX() == getScrollX()
-                    && mScroller.getCurrY() == getScrollY()) {
-
-            }
-        }
-
-        if (mScroller.isFinished()) {
-            if (updatePosition) {
+            invalidate();
+        } else {
+            if (mScrollDistance != 0) {
                 updateItemCenterPositions(mScrollDistance);
+                mScrollDistance = 0;
                 Log.i(TAG, "reviseGap getScrollX: " + getScrollX());
                 Log.i(TAG, "reviseGap after: " + mItemCenterPositions.toString());
                 Log.i(TAG, " ");
-            }
-            if (mOnItemSelectedListener != null) {
-                mOnItemSelectedListener.onItemSelected(this, mCenterIndex);
-                mOnItemSelectedListener.onItemChanged(mLastSelectedIndex, mCenterIndex);
+                if (mOnItemSelectedListener != null) {
+                    mOnItemSelectedListener.onItemSelected(this, mCenterIndex);
+                    mOnItemSelectedListener.onItemChanged(mLastSelectedIndex, mCenterIndex);
+                }
             }
         }
     }
@@ -232,8 +225,8 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
     private void autoSettle(int dx) {
         int sx = getScrollX();
         Log.i(TAG, "autoSettle sx: " + sx + " ,dx:" + dx);
-        mScroller.startScroll(sx, 0, dx, 0, 2000);
-        postInvalidate();
+        mScroller.startScroll(sx, 0, dx, 0);
+        invalidate();
     }
 
     private int reviseGap(int gap) {
@@ -243,8 +236,7 @@ public class Switcher extends View implements GestureDetector.OnGestureListener 
             if (Math.abs(gap - (mItemCenterPositions.get(i))) <= (mItemWidths.get(i) + mItemMargin) / 2) {
                 distance = mItemCenterPositions.get(i) - mItemCenterPositions.get(mCenterIndex);
                 mCenterIndex = i;
-                updatePosition = true;
-                break;
+                return distance;
             }
         }
         Log.i(TAG, "reviseGap2: " + distance);
